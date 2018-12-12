@@ -21,7 +21,41 @@ var mouseCoordLocation;
 
 var paused = false;//while window is resizing
 
-window.onload = initGL;
+var vertPath = "shader.vert";
+var fragPath = "conway.frag";
+var vertSrc = undefined;
+var fragSrc = undefined;
+var windowLoaded = false;
+var initialized = false;
+
+function checkReady() {
+    if (vertSrc !== undefined && fragSrc !== undefined && windowLoaded && !initialized) {
+        initialized = true;
+        initGL();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var vertReq = new XMLHttpRequest();
+    vertReq.addEventListener('load', function(e) {
+        vertSrc = e.target.responseText;
+        checkReady();
+    });
+    var fragReq = new XMLHttpRequest();
+    fragReq.addEventListener('load', function(e) {
+        fragSrc = e.target.responseText;
+        checkReady();
+    });
+    vertReq.open('GET', vertPath);
+    fragReq.open('GET', fragPath);
+    vertReq.send();
+    fragReq.send();
+});
+
+window.addEventListener('load', function(e) {
+    windowLoaded = true;
+    checkReady();
+});
 
 function initGL() {
 
@@ -53,7 +87,7 @@ function initGL() {
     gl.disable(gl.DEPTH_TEST);
 
     // setup a GLSL program
-    var program = createProgramFromScripts(gl, "2d-vertex-shader", "2d-fragment-shader");
+    var program = createProgramFromSources(gl, vertSrc, fragSrc);
     gl.useProgram(program);
 
     // look up where the vertex data needs to go.
