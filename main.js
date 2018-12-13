@@ -19,14 +19,57 @@ var flipYLocation;
 var textureSizeLocation;
 var mouseCoordLocation;
 
+var transitionNeighborLocation;
+var transitionSelfLocation;
+
 var paused = false;//while window is resizing
 
 var vertPath = "shader.vert";
-var fragPath = "conway.frag";
+var fragPath = "softlife.frag";
 var vertSrc = undefined;
 var fragSrc = undefined;
 var windowLoaded = false;
 var initialized = false;
+
+function randomNormal() {
+    return Math.sqrt(-2.0*Math.log(Math.random())) * Math.cos(2.0*Math.PI*Math.random());
+}
+
+function getNormalizedTransitionMatrices() {
+    var components = [];
+    for (var i = 0; i < 3; ++i) {
+        var sum = 0.0;
+        components.push([]);
+        for (var j = 0; j < 6; ++j) {
+            var x = Math.random() - 0.5;
+            sum += x;
+            components[i].push(x);
+        }
+        if (sum != 0.0) {
+            for (var j = 0; j < 6; ++j) {
+                components[i][j] = components[i][j]/sum;
+            }
+        }
+    }
+    var matrices = [[], []];
+    for (var i = 0; i < 2; ++i) {
+        for (var j = 0; j < 3; ++j) {
+            for (var k = 0; k < 3; ++k) {
+                matrices[i].push(components[j][k+i*3]);
+            }
+        }
+    }
+    return matrices;
+}
+
+var normalizedMat3s = getNormalizedTransitionMatrices();
+
+function replaceDefines(source, defines) {
+    for (var define in defines) {
+        source = source.replace(define, defines[define]);
+    }
+    return source;
+};
 
 function checkReady() {
     if (vertSrc !== undefined && fragSrc !== undefined && windowLoaded && !initialized) {
@@ -43,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     var fragReq = new XMLHttpRequest();
     fragReq.addEventListener('load', function(e) {
-        fragSrc = e.target.responseText;
+        fragSrc = replaceDefines(e.target.responseText, fragDefines);
         checkReady();
     });
     vertReq.open('GET', vertPath);
@@ -117,6 +160,9 @@ function initGL() {
     textureSizeLocation = gl.getUniformLocation(program, "u_textureSize");
 
     mouseCoordLocation = gl.getUniformLocation(program, "u_mouseCoord");
+
+    transitionNeighborLocation = gl.getUniformLocation(program, "u_transition_neighbor");
+    transitionSelfLocation = gl.getUniformLocation(program, "u_transition_self");
 
     // provide texture coordinates for the rectangle.
     var texCoordBuffer = gl.createBuffer();
