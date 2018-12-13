@@ -19,9 +19,6 @@ var flipYLocation;
 var textureSizeLocation;
 var mouseCoordLocation;
 
-var transitionNeighborLocation;
-var transitionSelfLocation;
-
 var paused = false;//while window is resizing
 
 var vertPath = "shader.vert";
@@ -34,42 +31,6 @@ var initialized = false;
 function randomNormal() {
     return Math.sqrt(-2.0*Math.log(Math.random())) * Math.cos(2.0*Math.PI*Math.random());
 }
-
-function getNormalizedTransitionMatrices() {
-    var components = [];
-    for (var i = 0; i < 3; ++i) {
-        var sum = 0.0;
-        components.push([]);
-        for (var j = 0; j < 6; ++j) {
-            var x = Math.random() - 0.5;
-            sum += x;
-            components[i].push(x);
-        }
-        if (sum != 0.0) {
-            for (var j = 0; j < 6; ++j) {
-                components[i][j] = components[i][j]/sum;
-            }
-        }
-    }
-    var matrices = [[], []];
-    for (var i = 0; i < 2; ++i) {
-        for (var j = 0; j < 3; ++j) {
-            for (var k = 0; k < 3; ++k) {
-                matrices[i].push(components[j][k+i*3]);
-            }
-        }
-    }
-    return matrices;
-}
-
-var normalizedMat3s = getNormalizedTransitionMatrices();
-
-function replaceDefines(source, defines) {
-    for (var define in defines) {
-        source = source.replace(define, defines[define]);
-    }
-    return source;
-};
 
 function checkReady() {
     if (vertSrc !== undefined && fragSrc !== undefined && windowLoaded && !initialized) {
@@ -86,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     var fragReq = new XMLHttpRequest();
     fragReq.addEventListener('load', function(e) {
-        fragSrc = replaceDefines(e.target.responseText, fragDefines);
+        fragSrc = e.target.responseText;
         checkReady();
     });
     vertReq.open('GET', vertPath);
@@ -111,6 +72,8 @@ function initGL() {
     canvas.ontouchmove = onTouchMove;
 
     window.onresize = onResize;
+
+    canvas.onclick = onClick;
 
     gl = canvas.getContext("webgl", { antialias: false}) || canvas.getContext("experimental-webgl", { antialias: false});
     if (!gl) {
@@ -161,8 +124,7 @@ function initGL() {
 
     mouseCoordLocation = gl.getUniformLocation(program, "u_mouseCoord");
 
-    transitionNeighborLocation = gl.getUniformLocation(program, "u_transition_neighbor");
-    transitionSelfLocation = gl.getUniformLocation(program, "u_transition_self");
+    randomizeParameters();
 
     // provide texture coordinates for the rectangle.
     var texCoordBuffer = gl.createBuffer();
@@ -194,7 +156,7 @@ function initGL() {
 
 function makeRandomArray(rgba){
     var numPixels = rgba.length/4;
-    var probability = 0.15;
+    var probability = 0.5;
     for (var i=0;i<numPixels;i++) {
         var ii = i * 4;
         var state = Math.random() < probability ? 1 : 0;
@@ -290,6 +252,16 @@ function onResize(){
     paused = false;
 }
 
+function resetState() {
+    paused = true;
+    width = canvas.clientWidth;
+    height = canvas.clientHeight;
+    var rgba = new Uint8Array(width*height*4);
+    gl.bindTexture(gl.TEXTURE_2D, lastState);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, makeRandomArray(rgba));
+    paused = false;
+}
+
 function onMouseMove(e){
     gl.uniform2f(mouseCoordLocation, e.clientX/width, e.clientY/height);
 }
@@ -298,4 +270,12 @@ function onTouchMove(e){
     e.preventDefault();
     var touch = e.touches[0];
     gl.uniform2f(mouseCoordLocation, touch.pageX/width, touch.pageY/height);
+}
+
+function randomizeParameters() {
+}
+
+function onClick(e) {
+    resetState();
+    randomizeParameters();
 }
