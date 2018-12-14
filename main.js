@@ -273,6 +273,7 @@ function onTouchMove(e){
 }
 
 function randomizeParameters() {
+    
 }
 
 function onClick(e) {
